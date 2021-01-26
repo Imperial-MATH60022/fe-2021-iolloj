@@ -18,8 +18,15 @@ def lagrange_points(cell, degree):
     <ex-lagrange-points>`.
 
     """
+    if cell.dim == 1:
+        res = np.array([[i/degree] for i in range(degree + 1)])
 
-    raise NotImplementedError
+    elif cell.dim == 2:
+        res = np.array([[i/degree, j/degree] for i in range(degree + 1) for j in range(degree + 1 - i)])
+
+    else:
+        raise NotImplementedError 
+    return res 
 
 
 def vandermonde_matrix(cell, degree, points, grad=False):
