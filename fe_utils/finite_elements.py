@@ -25,7 +25,7 @@ def lagrange_points(cell, degree):
         res = np.array([[i/degree, j/degree] for i in range(degree + 1) for j in range(degree + 1 - i)])
 
     else:
-        raise NotImplementedError 
+        raise NotImplementedError
     return res 
 
 
@@ -43,8 +43,47 @@ def vandermonde_matrix(cell, degree, points, grad=False):
     The implementation of this function is left as an :ref:`exercise
     <ex-vandermonde>`.
     """
+    m = len(points)
+    
+    
+    if cell.dim == 1:
+        V = np.zeros((m, int(degree + 1)))
+        V[:, 0] = np.ones((m,))
+        if degree >= 1:
+            V[:, 1] = np.array([point[0] for point in points]) 
+            for k in range(2, degree + 1):
+                V[:, k] = V[:, 1] * V[:, k-1]
+    
+    elif cell.dim == 2:
+        n = (degree + 1) * (degree + 2) // 2
+        V = np.zeros((m, n))
+        V[:, 0] = np.ones((m,))
+        if degree >= 1:
+            V[:, 1] = np.array([point[0] for point in points]) 
+            V[:, 2] = np.array([point[1] for point in points]) 
+            for k in range(2, degree + 1):
+                # x^k initialisation in V
+                startXk = (k) * (k + 1) // 2
+                V[:, startXk] = V[:, 1] * V[:, k*(k-1)//2]
 
-    raise NotImplementedError
+                # y^k initialisation in V
+                startYk = (k + 1) * (k + 2) // 2 - 1
+                V[:, startYk] = V[:, 2] * V[:, startXk-1]
+
+                # we need to fill all columns between startXk and startYk
+                # with x^k-j * y^j for j=0 to k
+                for i in range(startXk + 1, startYk):
+                    j = i - startXk
+                    # column index of x^k-j vector in vandermonde_matrix V
+                    xPower_j = (k - j) * (k - j + 1) // 2
+
+                    # column jndex of y^j vector jn vandermonde_matrix V
+                    yPower_j = (j + 1) * (j + 2) // 2 - 1
+
+                    # element wise multiplication between x^n-i and y^i vectors
+                    V[:, i] = V[:, xPower_j] * V[:, yPower_j]
+
+    return V
 
 
 class FiniteElement(object):
