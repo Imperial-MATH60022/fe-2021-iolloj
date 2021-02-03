@@ -25,7 +25,7 @@ def lagrange_points(cell, degree):
         res = np.array([[i/degree, j/degree] for i in range(degree + 1) for j in range(degree + 1 - i)])
 
     else:
-        raise NotImplementedError
+        raise NotImplementedError("dim>2 not implemented")
     return res 
 
 
@@ -62,17 +62,17 @@ def vandermonde_matrix(cell, degree, points, grad=False):
             V[:, 1] = np.array([point[0] for point in points]) 
             V[:, 2] = np.array([point[1] for point in points]) 
             for k in range(2, degree + 1):
-                # x^k initialisation in V
-                startXk = (k) * (k + 1) // 2
+                # x^k column initialisation in V
+                startXk = k * (k + 1) // 2
                 V[:, startXk] = V[:, 1] * V[:, k*(k-1)//2]
 
-                # y^k initialisation in V
-                startYk = (k + 1) * (k + 2) // 2 - 1
-                V[:, startYk] = V[:, 2] * V[:, startXk-1]
+                # y^k column initialisation in V
+                endYk = (k + 1) * (k + 2) // 2 - 1 
+                V[:, endYk] = V[:, 2] * V[:, startXk-1]
 
-                # we need to fill all columns between startXk and startYk
+                # we need to fill all columns between startXk and endYk 
                 # with x^k-j * y^j for j=0 to k
-                for i in range(startXk + 1, startYk):
+                for i in range(startXk + 1, endYk):
                     j = i - startXk
                     # column index of x^k-j vector in vandermonde_matrix V
                     xPower_j = (k - j) * (k - j + 1) // 2
@@ -80,8 +80,10 @@ def vandermonde_matrix(cell, degree, points, grad=False):
                     # column jndex of y^j vector jn vandermonde_matrix V
                     yPower_j = (j + 1) * (j + 2) // 2 - 1
 
-                    # element wise multiplication between x^n-i and y^i vectors
+                    # element wise multiplication between x^k-i and y^i vectors
                     V[:, i] = V[:, xPower_j] * V[:, yPower_j]
+    else:
+        raise NotImplementedError("dim>2 not implemented")
 
     return V
 
@@ -125,7 +127,8 @@ class FiniteElement(object):
         # Replace this exception with some code which sets
         # self.basis_coefs
         # to an array of polynomial coefficients defining the basis functions.
-        raise NotImplementedError
+        self.basis_coefs = np.linalg.inv(vandermonde_matrix(self.cell, 
+            self.degree, self.nodes))
 
         #: The number of nodes in this element.
         self.node_count = nodes.shape[0]
@@ -150,8 +153,12 @@ class FiniteElement(object):
         <ex-tabulate>`.
 
         """
-
-        raise NotImplementedError
+        """
+        self.basis_coefs -> each colum coefs for monomial basis
+        result -> column evaluation of a basis at p points 
+        """
+        vandermondePoints = vandermonde_matrix(self.cell, self.degree, points)
+        return vandermondePoints@self.basis_coefs
 
     def interpolate(self, fn):
         """Interpolate fn onto this finite element by evaluating it
@@ -190,7 +197,7 @@ class LagrangeElement(FiniteElement):
         <ex-lagrange-element>`.
         """
 
-        raise NotImplementedError
+        nodes = lagrange_points(cell, degree)
         # Use lagrange_points to obtain the set of nodes.  Once you
         # have obtained nodes, the following line will call the
         # __init__ method on the FiniteElement class to set up the
