@@ -47,41 +47,70 @@ def vandermonde_matrix(cell, degree, points, grad=False):
     
     
     if cell.dim == 1:
-        V = np.zeros((m, int(degree + 1)))
-        V[:, 0] = np.ones((m,))
-        if degree >= 1:
-            V[:, 1] = np.array([point[0] for point in points]) 
-            for k in range(2, degree + 1):
-                V[:, k] = V[:, 1] * V[:, k-1]
+        if grad == True:
+            V = np.array([[[0] for _ in range(degree+1)] for _ in range(m)])
+            if degree >= 1:
+                V[:, 1] = np.array([[1] for _ in range(m)])
+                for k in range(2, degree + 1):
+                    V[:, k] = np.array([[k * point[0]**k] for point in points ])
+        else:
+            V = np.zeros((m, int(degree + 1)))
+            V[:, 0] = np.ones((m,))
+            if degree >= 1:
+                V[:, 1] = np.array([point[0] for point in points]) 
+                for k in range(2, degree + 1):
+                    V[:, k] = V[:, 1] * V[:, k-1]
     
     elif cell.dim == 2:
-        n = (degree + 1) * (degree + 2) // 2
-        V = np.zeros((m, n))
-        V[:, 0] = np.ones((m,))
-        if degree >= 1:
-            V[:, 1] = np.array([point[0] for point in points]) 
-            V[:, 2] = np.array([point[1] for point in points]) 
-            for k in range(2, degree + 1):
-                # x^k column initialisation in V
-                startXk = k * (k + 1) // 2
-                V[:, startXk] = V[:, 1] * V[:, k*(k-1)//2]
+        if grad == True:
+            n = (degree + 1) * (degree + 2) // 2
+            V = np.array([[[0, 0] for _ in range(n)] for _ in range (m)])
+            if degree >= 1:
+                V[:, 1] = np.array([[1, 0] for _ in range(m)])
+                V[:, 2] = np.array([[0, 1] for _ in range(m)])
+                for k in range(2, degree + 1):
+                    # x^k column initialisation in V
+                    startXk = k * (k + 1) // 2
+                    V[:, startXk] = np.array([[k*point[0]**k, 0] for point in points])
 
-                # y^k column initialisation in V
-                endYk = (k + 1) * (k + 2) // 2 - 1 
-                V[:, endYk] = V[:, 2] * V[:, startXk-1]
+                    # y^k column initialisation in V
+                    endYk = (k + 1) * (k + 2) // 2 - 1 
+                    V[:, endYk] = np.array([[0, k*point[1]**k] for point in points])
 
-                # we need to fill all columns between startXk and endYk 
-                # with x^k-j * y^j for j=0 to k
-                for i in range(startXk + 1, endYk):
-                    j = i - startXk
-                    # column index of x^k-j vector in vandermonde_matrix V
-                    xPower_j = (k - j) * (k - j + 1) // 2
+                    # we need to fill all columns between startXk and endYk 
+                    # with [(k-j) * x^k-j-1 * y^j, j*x^k-j*y^j-1  for j=0 to k
+                    for i in range(startXk + 1, endYk):
+                        j = i - startXk
+                        # element wise multiplication between x^k-i and y^i vectors
+                        V[:, i] = np.array([[(k-j) * point[0]**(k-j-1) * point[1]**j, j*point[0]**(k-j) * point[1]**(j-1)] for point in points]) 
+        else:
+            n = (degree + 1) * (degree + 2) // 2
+            V = np.zeros((m, n))
+            V[:, 0] = np.ones((m,))
+            if degree >= 1:
+                V[:, 1] = np.array([point[0] for point in points]) 
+                V[:, 2] = np.array([point[1] for point in points]) 
+                for k in range(2, degree + 1):
+                    # x^k column initialisation in V
+                    startXk = k * (k + 1) // 2
+                    V[:, startXk] = V[:, 1] * V[:, k*(k-1)//2]
 
-                    # column jndex of y^j vector jn vandermonde_matrix V
-                    yPower_j = (j + 1) * (j + 2) // 2 - 1
+                    # y^k column initialisation in V
+                    endYk = (k + 1) * (k + 2) // 2 - 1 
+                    V[:, endYk] = V[:, 2] * V[:, startXk-1]
 
-                    # element wise multiplication between x^k-i and y^i vectors
-                    V[:, i] = V[:, xPower_j] * V[:, yPower_j]
+                    # we need to fill all columns between startXk and endYk 
+                    # with x^k-j * y^j for j=0 to k
+                    for i in range(startXk + 1, endYk):
+                        j = i - startXk
+                        # column index of x^k-j vector in vandermonde_matrix V
+                        xPower_j = (k - j) * (k - j + 1) // 2
+
+                        # column jndex of y^j vector jn vandermonde_matrix V
+                        yPower_j = (j + 1) * (j + 2) // 2 - 1
+
+                        # element wise multiplication between x^k-i and y^i vectors
+                        V[:, i] = V[:, xPower_j] * V[:, yPower_j]
     else:
         raise NotImplementedError("dim>2 not implemented")
 
