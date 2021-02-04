@@ -186,6 +186,10 @@ class FiniteElement(object):
         self.basis_coefs -> each colum coefs for monomial basis
         result -> column evaluation of a basis at p points 
         """
+        if grad:
+            gradVandermonde = vandermonde_matrix(self.cell, self.degree, points, grad=True)
+            return  np.einsum("ijk,jl->ilk", gradVandermonde, self.basis_coefs)
+        
         vandermondePoints = vandermonde_matrix(self.cell, self.degree, points)
         return vandermondePoints@self.basis_coefs
 
@@ -203,8 +207,8 @@ class FiniteElement(object):
         <ex-interpolate>`.
 
         """
-
-        raise NotImplementedError
+        print([fn(x) for x in self.nodes])
+        return [fn(x) for x in self.nodes]
 
     def __repr__(self):
         return "%s(%s, %s)" % (self.__class__.__name__,
