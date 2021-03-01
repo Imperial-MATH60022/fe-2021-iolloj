@@ -22,7 +22,7 @@ def lagrange_points(cell, degree):
         res = np.array([[i/degree] for i in range(degree + 1)])
 
     elif cell.dim == 2:
-        res = np.array([[i/degree, j/degree] for i in range(degree + 1) for j in range(degree + 1 - i)])
+        res = np.array([[i/degree, j/degree] for j in range(degree + 1) for i in range(degree + 1 - j)])
 
     else:
         raise NotImplementedError("dim>2 not implemented")
@@ -81,7 +81,7 @@ def vandermonde_matrix(cell, degree, points, grad=False):
                     # with [(k-j) * x^k-j-1 * y^j, j*x^k-j*y^j-1  for j=0 to k
                     for i in range(startXk + 1, endYk):
                         j = i - startXk
-                        V[:, i] = np.array([[(k-j) * point[0]**(k-j-1) * point[1]**j, j*point[0]**(k-j) * point[1]**(j-1)] for point in points]) 
+                        V[:, i] = np.array([[(k-j) * point[0]**(k-j-1) * point[1]**j, j * point[0]**(k-j) * point[1]**(j-1)] for point in points]) 
         else:
             n = (degree + 1) * (degree + 2) // 2
             V = np.zeros((m, n))
@@ -225,10 +225,56 @@ class LagrangeElement(FiniteElement):
         The implementation of this class is left as an :ref:`exercise
         <ex-lagrange-element>`.
         """
-
+        
+        entity_nodes = self.get_entity_nodes(degree, cell) 
         nodes = lagrange_points(cell, degree)
         # Use lagrange_points to obtain the set of nodes.  Once you
         # have obtained nodes, the following line will call the
         # __init__ method on the FiniteElement class to set up the
         # basis coefficients.
-        super(LagrangeElement, self).__init__(cell, degree, nodes)
+        super(LagrangeElement, self).__init__(cell, degree, nodes, entity_nodes=entity_nodes)
+
+    def get_entity_nodes(self, degree, cell):
+        dim = cell.dim
+        N = int((degree + 1) * (degree + 2) / 2)
+        all_indices = [i for i in range(N)]
+        
+        if dim == 1:
+            entity_nodes = {0: {0: [0],
+                                1: [degree]},
+                            1: {0:[i for i in range(1,degree)]}}
+            return entity_nodes
+        
+        elif dim == 2:
+            v1, v2, v3 = 0, degree, N - 1
+        
+            entity_nodes = {0: {0: [v1],
+                                1: [v2],
+                                2: [v3]
+                                },
+                            1: {0: []},
+                            2: {0: []}
+                                }
+            if degree == 1:
+                return entity_nodes
+            
+            indexes_0 = lambda i: int((i + 2) * degree - i * (1 + i) / 2)
+            edge_0 = [indexes_0(i) for i in range(degree - 1)]
+
+            indexes_1 = lambda i: int((i + 1) * (1 + degree) - i * (1 + i) / 2)
+            edge_1 = [indexes_1(i) for i in range(degree - 1)]
+
+            edge_2 = [i for i in range(1,degree)]
+            
+            seen = [v1, v2, v3] + edge_0 + edge_1 + edge_2
+            
+            # what is not on edges or vertex is in interior
+            interior = [i for i in all_indices if not i in seen]
+
+            entity_nodes[1] = {0: edge_0,
+                                1: edge_1,
+                                2: edge_2}
+            entity_nodes[2] = {0: interior}
+
+        return entity_nodes
+        

@@ -6,6 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
 
 
+
 class FunctionSpace(object):
 
     def __init__(self, mesh, element):
@@ -23,7 +24,6 @@ class FunctionSpace(object):
         #: The :class:`~.finite_elements.FiniteElement` of this space.
         self.element = element
 
-        raise NotImplementedError
 
         # Implement global numbering in order to produce the global
         # cell node list for this space.
@@ -31,7 +31,7 @@ class FunctionSpace(object):
         #: which each row lists the global nodes incident to the corresponding
         #: cell. The implementation of this member is left as an
         #: :ref:`exercise <ex-function-space>`
-        self.cell_nodes = None
+        self.set_cell_nodes()
 
         #: The total number of nodes in the function space.
         self.node_count = np.dot(element.nodes_per_entity, mesh.entity_counts)
@@ -40,6 +40,27 @@ class FunctionSpace(object):
         return "%s(%s, %s)" % (self.__class__.__name__,
                                self.mesh,
                                self.element)
+    
+
+    def global_node_id(self, d, i):
+        """ Returns global node index associated with element (d, i) """
+        N = self.element.nodes_per_entity[d]
+        return sum(self.mesh.entity_counts[delta] * self.element.nodes_per_entity[delta] for delta in range(d)) + i * N
+
+    # There is problem with this, the plot fails for dim = 2 and show strange plots for dimension > 1 
+    def set_cell_nodes(self):
+        """ Set global cell node list for representing global numbering """
+        element, mesh = self.element, self.mesh
+
+        nrows, ncols = mesh.cell_vertices.shape[0], element.node_count
+        self.cell_nodes = np.zeros((nrows, ncols), dtype=int)
+        
+        e = lambda x, y: element.entity_nodes[x][y]
+        for c in range(nrows):
+            for delta in range(element.cell.dim):
+                for eps in range(element.cell.entity_counts[delta]):
+                    i = mesh.adjacency(element.cell.dim, delta)[c, eps]
+                    self.cell_nodes[c][e(delta, eps)] = [self.global_node_id(delta, i) + j for j in range(element.nodes_per_entity[delta])]
 
 
 class Function(object):
