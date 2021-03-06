@@ -252,7 +252,9 @@ class LagrangeElement(FiniteElement):
                                 1: [v2],
                                 2: [v3]
                                 },
-                            1: {0: []},
+                            1: {0: [],
+                                1: [],
+                                2: []},
                             2: {0: []}
                                 }
             if degree == 1:

@@ -4,7 +4,7 @@ from .finite_elements import LagrangeElement, lagrange_points
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
-
+import pdb
 
 
 class FunctionSpace(object):
@@ -47,19 +47,22 @@ class FunctionSpace(object):
         N = self.element.nodes_per_entity[d]
         return sum(self.mesh.entity_counts[delta] * self.element.nodes_per_entity[delta] for delta in range(d)) + i * N
 
-    # There is problem with this, the plot fails for dim = 2 and show strange plots for dimension > 1 
+
     def set_cell_nodes(self):
-        """ Set global cell node list for representing global numbering """
+        """ Set map from cells to adjacent nodes as a two-dimensional array """
         element, mesh = self.element, self.mesh
 
-        nrows, ncols = mesh.cell_vertices.shape[0], element.node_count
+        nrows, ncols = mesh.entity_counts[-1], element.node_count
         self.cell_nodes = np.zeros((nrows, ncols), dtype=int)
-        
+         
         e = lambda x, y: element.entity_nodes[x][y]
         for c in range(nrows):
-            for delta in range(element.cell.dim):
+            for delta in range(element.cell.dim + 1):
                 for eps in range(element.cell.entity_counts[delta]):
-                    i = mesh.adjacency(element.cell.dim, delta)[c, eps]
+                    if delta == element.cell.dim and eps == 0:
+                        i = c
+                    else:
+                        i = mesh.adjacency(element.cell.dim, delta)[c, eps]
                     self.cell_nodes[c][e(delta, eps)] = [self.global_node_id(delta, i) + j for j in range(element.nodes_per_entity[delta])]
 
 
