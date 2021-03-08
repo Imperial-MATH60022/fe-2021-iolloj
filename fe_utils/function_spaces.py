@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
 import pdb
+from .quadrature import gauss_quadrature
 
 
 class FunctionSpace(object):
@@ -190,5 +191,22 @@ class Function(object):
         """Integrate this :class:`Function` over the domain.
 
         :result: The integral (a scalar)."""
+        fs = self.function_space
+        fe = fs.element
+        mesh = fs.mesh
 
-        raise NotImplementedError
+        quadrature = gauss_quadrature(fe.cell, fe.degree + 1)
+
+        local_basis = fe.tabulate(quadrature.points)
+        res = 0
+        for c in range(mesh.entity_counts[-1]):
+            det_J = abs(np.linalg.det(mesh.jacobian(c)))
+            # global nodes in local order
+            global_nodes = fs.cell_nodes[c, :]
+            
+            # global values of corresponding local nodes
+            values = self.values[global_nodes] 
+             
+            res += det_J * np.einsum('j, qj, q' ,values, local_basis, quadrature.weights)
+        return res
+
