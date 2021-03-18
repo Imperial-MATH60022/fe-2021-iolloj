@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 from .reference_elements import ReferenceInterval, ReferenceTriangle
 np.seterr(invalid='ignore', divide='ignore')
-
+import pdb
 
 def lagrange_points(cell, degree):
     """Construct the locations of the equispaced Lagrange nodes on cell.
@@ -261,18 +261,23 @@ class LagrangeElement(FiniteElement):
                 return entity_nodes
             
             indexes_0 = lambda i: int((i + 2) * degree - i * (1 + i) / 2)
-            edge_0 = [indexes_0(i) for i in range(degree - 1)]
-
             indexes_1 = lambda i: int((i + 1) * (1 + degree) - i * (1 + i) / 2)
-            edge_1 = [indexes_1(i) for i in range(degree - 1)]
-
-            edge_2 = [i for i in range(1,degree)]
             
-            seen = [v1, v2, v3] + edge_0 + edge_1 + edge_2
+            edge_0, edge_1, edge_2 = [], [], []
+            for i in range(degree - 1):
+                edge_0 += [indexes_0(i)]
+                all_indices.remove(indexes_0(i))
+                edge_1 += [indexes_1(i)]
+                all_indices.remove(indexes_1(i))
+                edge_2 += [i + 1]
+                # what is not on edges or vertex is in interior
+                all_indices.remove(i + 1)
             
-            # what is not on edges or vertex is in interior
-            interior = [i for i in all_indices if not i in seen]
+            all_indices.remove(v1)
+            all_indices.remove(v2)
+            all_indices.remove(v3)
 
+            interior = all_indices
             entity_nodes[1] = {0: edge_0,
                                 1: edge_1,
                                 2: edge_2}
