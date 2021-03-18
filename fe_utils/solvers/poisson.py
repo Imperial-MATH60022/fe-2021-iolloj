@@ -18,7 +18,50 @@ def assemble(fs, f):
     the function space in which to solve and the right hand side
     function."""
 
-    raise NotImplementedError
+    fe = fs.element
+    # Create an appropriate (complete) quadrature rule.
+    Q = gauss_quadrature(fe.cell, 2*fe.degree)
+
+    # Tabulate the basis functions and their gradients at the quadrature points.
+    phi = fe.tabulate(Q.points)
+    grad_phi = fe.tabulate(Q.points, grad=True)
+
+    # Create the left hand side matrix and right hand side vector.
+    # This creates a sparse matrix because creating a dense one may
+    # well run your machine out of memory!
+    A = sp.lil_matrix((fs.node_count, fs.node_count))
+    l = np.zeros(fs.node_count)
+    # Now loop over all the cells and assemble A and l
+    for c in range(fs.mesh.entity_counts[-1]):
+        # Find the appropriate global node numbers for this cell.
+        nodes = fs.cell_nodes[c, :]
+
+        # Compute the change of coordinates.
+        J = fs.mesh.jacobian(c)
+        J_inv_t = np.linalg.inv(J.T)
+        det_J = np.abs(np.linalg.det(J))
+
+        f_inner_sum = np.einsum('k, qk->q', f.values[nodes], phi)
+        l[nodes] += np.einsum('q, qi, q->i', f_inner_sum, phi, Q.weights) * det_J
+
+        # Sum phi * phi * wq
+        phi_phi = np.einsum('qi, qj->ijq', phi, phi)
+        phi_sum = np.einsum('ijq, q->ij', phi_phi, Q.weights)
+        
+        # J @ grad_phi term
+        J_grad = np.einsum('ba, qia->biq', J_inv_t, grad_phi)
+        # (J @ grad_phi ) (J @ grad_phi) term
+        grad_grad = np.einsum('ajq, aiq->ijq', J_grad, J_grad)
+        # Sum (J @ grad_phi ) (J @ grad_phi) * wq
+        grad_sum = np.einsum('ijq, q->ij', grad_grad, Q.weights)
+
+        A[np.ix_(nodes, nodes)] += (phi_sum + grad_sum) * det_J
+    
+    boundary = boundary_nodes(fs)
+    l[boundary] = 0
+    A[boundary] = np.zeros((len(boundary), fs.node_count))
+    A[boundary, boundary] = np.ones(len(boundary))
+    return A, l 
 
 
 def boundary_nodes(fs):
