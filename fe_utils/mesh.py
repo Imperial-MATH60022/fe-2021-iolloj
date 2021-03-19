@@ -4,6 +4,7 @@ import itertools
 from .finite_elements import LagrangeElement
 from .function_spaces import FunctionSpace
 from .reference_elements import ReferenceTriangle, ReferenceInterval
+import pdb
 
 class Mesh(object):
     """A one or two dimensional mesh composed of intervals or triangles
@@ -73,7 +74,7 @@ class Mesh(object):
 
         cg1 = LagrangeElement(self.cell, 1)
         self.cg1fs = FunctionSpace(self, cg1)
-        self.basis_grad = cg1.tabulate([tuple([0]) * self.dim], grad=True)
+        self.basis_grad = cg1.tabulate([tuple([0 for _ in range(self.dim)])], grad=True)
 
 
     def adjacency(self, dim1, dim2):
@@ -118,7 +119,7 @@ class Mesh(object):
 
         # set of coordinate vectors for the vertices of element c in local order
         local_vertex = self.vertex_coords[self.cg1fs.cell_nodes[c, :], :]
-        return np.einsum("ijk,jl->lk", self.basis_grad, local_vertex)
+        return np.einsum("jl, ijk->lk",  local_vertex, self.basis_grad)
 
 
 class UnitIntervalMesh(Mesh):

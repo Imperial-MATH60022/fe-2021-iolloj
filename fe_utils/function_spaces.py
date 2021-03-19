@@ -195,7 +195,7 @@ class Function(object):
         fe = fs.element
         mesh = fs.mesh
 
-        quadrature = gauss_quadrature(fe.cell, fe.degree + 1)
+        quadrature = gauss_quadrature(fe.cell, fe.degree**2)
 
         local_basis = fe.tabulate(quadrature.points)
         res = 0
