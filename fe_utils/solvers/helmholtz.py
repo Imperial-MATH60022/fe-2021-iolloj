@@ -42,18 +42,13 @@ def assemble(fs, f):
         l[nodes] += np.einsum('q, qi, q->i', f_inner_sum, phi, Q.weights) * det_J
 
         # Sum phi * phi * wq
-        phi_phi = np.einsum('qi, qj->ijq', phi, phi)
-        phi_sum = np.einsum('ijq, q->ij', phi_phi, Q.weights)
+        phi_sum = np.einsum('qi, qj, q->ij', phi, phi, Q.weights)
         
-        # J @ grad_phi term
-        J_grad = np.einsum('ba, qia->biq', J_inv_t, grad_phi)
-        # (J @ grad_phi ) (J @ grad_phi) term
-        grad_grad = np.einsum('ajq, aiq->ijq', J_grad, J_grad)
         # Sum (J @ grad_phi ) (J @ grad_phi) * wq
-        grad_sum = np.einsum('ijq, q->ij', grad_grad, Q.weights)
+        grad_sum = np.einsum('ab, qib, ac, qjc, q->ij', J_inv_t, grad_phi, 
+                J_inv_t, grad_phi, Q.weights)
 
         A[np.ix_(nodes, nodes)] += (phi_sum + grad_sum) * det_J
-
     return A, l
 
 
