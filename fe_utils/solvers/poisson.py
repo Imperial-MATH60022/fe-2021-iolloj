@@ -44,9 +44,6 @@ def assemble(fs, f):
         f_inner_sum = np.einsum('k, qk->q', f.values[nodes], phi)
         l[nodes] += np.einsum('q, qi, q->i', f_inner_sum, phi, Q.weights) * det_J
 
-        # Sum phi * phi * wq
-        phi_phi = np.einsum('qi, qj->ijq', phi, phi)
-        phi_sum = np.einsum('ijq, q->ij', phi_phi, Q.weights)
         
         # J @ grad_phi term
         J_grad = np.einsum('ba, qia->biq', J_inv_t, grad_phi)
@@ -55,7 +52,7 @@ def assemble(fs, f):
         # Sum (J @ grad_phi ) (J @ grad_phi) * wq
         grad_sum = np.einsum('ijq, q->ij', grad_grad, Q.weights)
 
-        A[np.ix_(nodes, nodes)] += (phi_sum + grad_sum) * det_J
+        A[np.ix_(nodes, nodes)] += (grad_sum) * det_J
     
     boundary = boundary_nodes(fs)
     l[boundary] = 0
