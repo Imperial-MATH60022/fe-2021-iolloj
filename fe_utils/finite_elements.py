@@ -45,73 +45,30 @@ def vandermonde_matrix(cell, degree, points, grad=False):
     """
     m = len(points)
     
-    
     if cell.dim == 1:
-        if grad:
-            V = np.array([[[0] for _ in range(degree+1)] for _ in range(m)])
-            if degree >= 1:
-                V[:, 1] = np.array([[1] for _ in range(m)])
-                for k in range(2, degree + 1):
-                    V[:, k] = np.array([[k * point[0]**k] for point in points])
-        else:
-            V = np.zeros((m, int(degree + 1)))
-            V[:, 0] = np.ones((m,))
-            if degree >= 1:
-                V[:, 1] = np.array([point[0] for point in points]) 
-                for k in range(2, degree + 1):
-                    V[:, k] = V[:, 1] * V[:, k-1]
-    
-    elif cell.dim == 2:
-        if grad:
-            n = (degree + 1) * (degree + 2) // 2
-            V = np.array([[[0, 0] for _ in range(n)] for _ in range (m)])
-            if degree >= 1:
-                V[:, 1] = np.array([[1, 0] for _ in range(m)])
-                V[:, 2] = np.array([[0, 1] for _ in range(m)])
-                for k in range(2, degree + 1):
-                    # x^k column initialisation in V
-                    startXk = k * (k + 1) // 2
-                    V[:, startXk] = np.array([[k*point[0]**k, 0] for point in points])
+        X = np.stack([x**np.arange(degree+1) for x in points])
+        if not grad:
+            return X
+        V = np.array([[0]+ [p*X[k, p-1] for p in range(1,degree+1)] for k in range(m)])
+        return np.expand_dims(V, axis=2)
 
-                    # y^k column initialisation in V
-                    endYk = (k + 1) * (k + 2) // 2 - 1 
-                    V[:, endYk] = np.array([[0, k*point[1]**k] for point in points])
+    elif cell.dim == 2: 
+        X = np.stack([p[0]**np.arange(degree + 1) for p in points])
+        Y = np.stack([p[1]**np.arange(degree + 1) for p in points])
+        
+        if not grad:
+            V = np.concatenate([[X[:, i-k] * Y[:, k] for k in range(i + 1)] for i in range(degree + 1)]).T
+            return V 
+        
+        a, b = np.tril_indices(degree + 1)
+        indices = zip(a[1:], b[1:])
+        V =  np.array([[np.zeros_like(X[:, 0]), np.zeros_like(Y[:, 0])]])
+        if degree>=1:
+            V = np.concatenate([V, [[(i-k)*X[:, i-k-1] * Y[:, k], (k)*X[:, i-k] * Y[:, k-1]] for i, k in indices]])
 
-                    # we need to fill all columns between startXk and endYk 
-                    # with [(k-j) * x^k-j-1 * y^j, j*x^k-j*y^j-1  for j=0 to k
-                    for i in range(startXk + 1, endYk):
-                        j = i - startXk
-                        V[:, i] = np.array([[(k-j) * point[0]**(k-j-1) * point[1]**j, j * point[0]**(k-j) * point[1]**(j-1)] for point in points]) 
-        else:
-            n = (degree + 1) * (degree + 2) // 2
-            V = np.zeros((m, n))
-            V[:, 0] = np.ones((m,))
-            if degree >= 1:
-                V[:, 1] = np.array([point[0] for point in points]) 
-                V[:, 2] = np.array([point[1] for point in points]) 
-                for k in range(2, degree + 1):
-                    # x^k column initialisation in V
-                    startXk = k * (k + 1) // 2
-                    V[:, startXk] = V[:, 1] * V[:, k*(k-1)//2]
-
-                    # y^k column initialisation in V
-                    endYk = (k + 1) * (k + 2) // 2 - 1 
-                    V[:, endYk] = V[:, 2] * V[:, startXk-1]
-
-                    # we need to fill all columns between startXk and endYk 
-                    # with x^k-j * y^j for j=0 to k
-                    for i in range(startXk + 1, endYk):
-                        j = i - startXk
-                        # column index of x^k-j vector in vandermonde_matrix V
-                        xPower_j = (k - j) * (k - j + 1) // 2
-                        # column jndex of y^j vector jn vandermonde_matrix V
-                        yPower_j = (j + 1) * (j + 2) // 2 - 1
-
-                        V[:, i] = V[:, xPower_j] * V[:, yPower_j]
+        return np.einsum('ijk->kij', V)
     else:
         raise NotImplementedError("dim>2 not implemented")
-
-    return V
 
 
 class FiniteElement(object):
