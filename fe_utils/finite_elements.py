@@ -227,13 +227,13 @@ class LagrangeElement(FiniteElement):
                 edge_1 += [indexes_1(i)]
                 all_indices.remove(indexes_1(i))
                 edge_2 += [i + 1]
-                # what is not on edges or vertex is in interior
                 all_indices.remove(i + 1)
             
             all_indices.remove(v1)
             all_indices.remove(v2)
             all_indices.remove(v3)
 
+            # what is not on edges or vertex is in interior
             interior = all_indices
             entity_nodes[1] = {0: edge_0,
                                 1: edge_1,
@@ -241,4 +241,39 @@ class LagrangeElement(FiniteElement):
             entity_nodes[2] = {0: interior}
 
         return entity_nodes
-        
+
+
+
+
+class VectorFiniteElement(FiniteElement):
+    def __init__(self, fe):
+        self.fe = fe
+        entity_nodes = fe.entity_nodes
+        d = fe.cell.dim
+        if entity_nodes:
+            f = lambda l: [2*i+p for p in range(d) for i in l]
+            for i in entity_nodes.keys():
+                for k in entity_nodes[i].keys():
+                    entity_nodes[i][k] = f(entity_nodes[i][k])
+
+        super(VectorFiniteElement, self).__init__(fe.cell, fe.degree, fe.nodes, fe.entity_nodes)
+        f = lambda i, j: fe.nodes[int(i // d)][j] 
+        self.nodes = np.array([[f(i, j) for j in range(d)] for i in range(d*len(fe.nodes))])
+        self.nodes_weights = np.fromfunction(lambda i, j: (j+i+1) % d, (len(fe.nodes)*d, d))
+        self.node_count *= d
+
+
+    def tabulate(self, points, grad=False):
+        phi = self.fe.tabulate(points, grad=grad)
+        d = self.cell.dim
+        # Create an array with one/zeros at the right place and use element wise * with phi
+        if grad:
+            shape_output = (phi.shape[0], d, d * phi.shape[1], phi.shape[2])
+            tab = np.fromfunction(lambda i, j, k, l: (j+i+1) % d, shape_output)
+        else:
+            shape_output = (phi.shape[0], d, d * phi.shape[1]) 
+            tab = np.fromfunction(lambda i, j, k: (j+i+1) % d, shape_output)
+        for i in range(d):
+            tab[:, i, ::2] *= phi
+            tab[:, i, 1::2] *= phi
+        return tab

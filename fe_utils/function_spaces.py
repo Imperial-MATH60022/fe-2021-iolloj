@@ -1,6 +1,6 @@
 import numpy as np
 from . import ReferenceTriangle, ReferenceInterval
-from .finite_elements import LagrangeElement, lagrange_points
+from .finite_elements import LagrangeElement, lagrange_points, VectorFiniteElement
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
@@ -109,8 +109,11 @@ class Function(object):
             # Interpolate the coordinates to the cell nodes.
             vertex_coords = fs.mesh.vertex_coords[cg1fs.cell_nodes[c, :], :]
             node_coords = np.dot(coord_map, vertex_coords)
-
-            self.values[fs.cell_nodes[c, :]] = [fn(x) for x in node_coords]
+            
+            if isinstance(fs.element, VectorFiniteElement):
+                self.values[fs.cell_nodes[c, :]] = [fs.element.nodes_weights[i] @ fn(p) for i, p in enumerate(node_coords)]
+            else: 
+                self.values[fs.cell_nodes[c, :]] = [fn(x) for x in node_coords]
 
     def plot(self, subdivisions=None):
         """Plot the value of this :class:`Function`. This is quite a low
@@ -127,7 +130,17 @@ class Function(object):
         """
 
         fs = self.function_space
-
+        if isinstance(fs.element, VectorFiniteElement):
+            coords = Function(fs)
+            coords.interpolate(lambda x: x)
+            fig = plt.figure()
+            ax = fig.gca()
+            x = coords.values.reshape(-1, 2)
+            v = self.values.reshape(-1, 2)
+            plt.quiver(x[:, 0], x[:, 1], v[:, 0], v[:, 1])
+            plt.show()
+            return
+        
         d = subdivisions or (2 * (fs.element.degree + 1) if fs.element.degree > 1 else 2)
 
         if fs.element.cell is ReferenceInterval:

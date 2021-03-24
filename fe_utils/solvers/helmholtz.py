@@ -39,14 +39,14 @@ def assemble(fs, f):
         det_J = np.abs(np.linalg.det(J))
 
         f_inner_sum = np.einsum('k, qk->q', f.values[nodes], phi)
-        l[nodes] += np.einsum('q, qi, q->i', f_inner_sum, phi, Q.weights) * det_J
+        l[nodes] += np.einsum('q, qi, q->i', f_inner_sum, phi, Q.weights, optimize=True) * det_J
 
         # Sum phi * phi * wq
-        phi_sum = np.einsum('qi, qj, q->ij', phi, phi, Q.weights)
+        phi_sum = np.einsum('qi, qj, q->ij', phi, phi, Q.weights, optimize=True)
         
         # Sum (J @ grad_phi ) (J @ grad_phi) * wq
         grad_sum = np.einsum('ab, qib, ac, qjc, q->ij', J_inv_t, grad_phi, 
-                J_inv_t, grad_phi, Q.weights)
+                J_inv_t, grad_phi, Q.weights, optimize=True)
 
         A[np.ix_(nodes, nodes)] += (phi_sum + grad_sum) * det_J
     return A, l
