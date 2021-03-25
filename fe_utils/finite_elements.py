@@ -256,7 +256,7 @@ class VectorFiniteElement(FiniteElement):
                 for k in entity_nodes[i].keys():
                     entity_nodes[i][k] = f(entity_nodes[i][k])
 
-        super(VectorFiniteElement, self).__init__(fe.cell, fe.degree, fe.nodes, fe.entity_nodes)
+        super(VectorFiniteElement, self).__init__(fe.cell, fe.degree, fe.nodes, entity_nodes)
         f = lambda i, j: fe.nodes[int(i // d)][j] 
         self.nodes = np.array([[f(i, j) for j in range(d)] for i in range(d*len(fe.nodes))])
         self.nodes_weights = np.fromfunction(lambda i, j: (j+i+1) % d, (len(fe.nodes)*d, d))
@@ -266,13 +266,16 @@ class VectorFiniteElement(FiniteElement):
     def tabulate(self, points, grad=False):
         phi = self.fe.tabulate(points, grad=grad)
         d = self.cell.dim
+        p = phi.shape[0]
+        N = phi.shape[1]
         # Create an array with one/zeros at the right place and use element wise * with phi
         if grad:
-            shape_output = (phi.shape[0], d, d * phi.shape[1], phi.shape[2])
-            tab = np.fromfunction(lambda i, j, k, l: (j+i+1) % d, shape_output)
+            even = np.stack([[[1., 1], [0., 0.]] for _ in range(p)])
+            odd = np.stack([[[0., 0.], [1., 1.]] for _ in range(p)])
         else:
-            shape_output = (phi.shape[0], d, d * phi.shape[1]) 
-            tab = np.fromfunction(lambda i, j, k: (j+i+1) % d, shape_output)
+            even = np.stack([[1., 0.] for _ in range(p)])
+            odd = np.stack([[0., 1.] for _ in range(p)])
+        tab = np.stack([even, odd]*N, axis=2)
         for i in range(d):
             tab[:, i, ::2] *= phi
             tab[:, i, 1::2] *= phi
