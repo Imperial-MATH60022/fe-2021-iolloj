@@ -45,6 +45,6 @@ if __name__=="__main__":
         fig = plt.figure()
         ax = fig.gca(projection='3d')
 
-        ax.plot_trisurf(x[:, 0], x[:, 1], np.dot(z, coefs), cmap=cm.RdBu, linewidth=0)
-
+        pos = ax.plot_trisurf(x[:, 0], x[:, 1], np.dot(z, coefs), cmap=cm.RdBu, linewidth=0)
+        fig.colorbar(pos)
     plt.show()

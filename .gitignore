@@ -1,4 +1,6 @@
 *.pyc
+*.swp
+fe_venv/*
 __pycache__
 .cache
 *~
